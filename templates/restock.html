@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Add To Store{% endblock %}
+{% block title %}List Item{% endblock %}
 
 {% block content %}
 
@@ -9,11 +9,11 @@
 <br><br>
 
 <h1>Welcome To BasicStore Online</h1>
-<h2>Add An Item To The Shop</h2><br>
+<h2>List an Item</h2><br>
 
 <form action="?" method="GET" onsubmit="addItem();return false;">
 	Item Name: <input type="text" id="itemName" value=""/> <br><br>
-	Quantity: <input type="text" id="itemQuantity" value=""/> <br><br>
+	Image: <input type="text" id="itemImage" value=""/> <br><br>
 	Price: <input type="text" id="itemPrice" value=""/> <br><br>
 	<input class="button" type="submit" value="Submit" />
 </form>

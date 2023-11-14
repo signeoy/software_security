@@ -44,18 +44,18 @@ def storeapi():
         g.db = connect_db()
         curs = g.db.execute("SELECT * FROM shop_items")
         cur2 = g.db.execute("SELECT * FROM employees")
-        items = [{'items': [dict(name=row[0], quantity=row[1], price=row[2]) for row in curs.fetchall()]}]
+        items = [{'items': [dict(name=row[0], image=row[1], price=row[2]) for row in curs.fetchall()]}]
         empls = [{'employees': [dict(username=row[0], password=row[1]) for row in cur2.fetchall()]}]
         g.db.close()
         return jsonify(items + empls)
 
     elif request.method == 'POST':
         g.db = connect_db()
-        name, quan, price = (request.json['name'], request.json['quantity'], request.json['price'])
-        curs = g.db.execute("""INSERT INTO shop_items(name, quantity, price) VALUES(?,?,?)""", (name, quan, price))
+        name, img, price = (request.json['name'], request.json['image'], request.json['price'])
+        curs = g.db.execute("""INSERT INTO shop_items(name, image, price) VALUES(?,?,?)""", (name, img, price))
         g.db.commit()
         g.db.close()
-        return jsonify({'status': 'OK', 'name': name, 'quantity': quan, 'price': price})
+        return jsonify({'status': 'OK', 'name': name, 'image': img, 'price': price})
 
 
 @app.route('/api/v1.0/storeAPI/<item>', methods=['GET'])
@@ -63,7 +63,7 @@ def searchAPI(item):
     g.db = connect_db()
     # curs = g.db.execute("SELECT * FROM shop_items WHERE name=?", item) #The safe way to actually get data from db
     curs = g.db.execute("SELECT * FROM shop_items WHERE name = '%s'" % item)
-    results = [dict(name=row[0], quantity=row[1], price=row[2]) for row in curs.fetchall()]
+    results = [dict(name=row[0], image=row[1], price=row[2]) for row in curs.fetchall()]
     g.db.close()
     return jsonify(results)
 
