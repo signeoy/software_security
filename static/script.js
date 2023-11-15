@@ -51,6 +51,10 @@ function addItem(){
     var name = document.getElementById("itemName").value;
     var img = document.getElementById("itemImage").value;
     var price = document.getElementById("itemPrice").value;
+    if (/[<>]/.test(img)) {
+        $("#stat").html("Please enter only letters, numbers, spaces, /, \\, ;, or + in the image link.");
+        return;
+    }
 
     var dat = {'name':name, 'image':img, 'price':price};
 

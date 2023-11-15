@@ -1,6 +1,5 @@
 import sqlite3, os, hashlib
 from flask import Flask, jsonify, render_template, request, g
-
 from create_db import hash_pass
 
 app = Flask(__name__)
