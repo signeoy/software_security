@@ -2,10 +2,15 @@ import hashlib
 import sqlite3
 
 
-def hash_pass(passw):
-    m = hashlib.md5()
-    m.update(passw.encode('utf-8'))
-    return m.hexdigest()
+def hash_pass(data):
+    if isinstance(data, str):
+        data = data.encode()
+    # Calculate SHA-256 hash
+    sha256_hash = hashlib.sha256(data).hexdigest()
+
+    return sha256_hash
+
+# Convert data to bytes if it’s not already
 
 
 def create_db():
