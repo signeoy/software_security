@@ -28,13 +28,16 @@ def loginAPI():
         uname, pword = (request.json['username'], request.json['password'])
         g.db = connect_db()
         cur = g.db.execute(
-            "SELECT * FROM employees WHERE username = '%s' AND password = '%s'" % (uname, hash_pass(pword)))
+            "SELECT * FROM employees WHERE username = ? AND password = ?",
+            (uname, hash_pass(pword))
+        )
         if cur.fetchone():
             result = {'status': 'success'}
         else:
             result = {'status': 'fail'}
         g.db.close()
         return jsonify(result)
+
 
 
 @app.route('/api/v1.0/storeAPI', methods=['GET', 'POST'])
