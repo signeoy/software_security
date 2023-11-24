@@ -58,6 +58,7 @@ function addItem(){
 
     var dat = {'name':name, 'image':img, 'price':price};
 
+
     $.ajax('/api/v1.0/storeAPI',{
         method: 'POST',
         data: JSON.stringify(dat),

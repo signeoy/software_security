@@ -29,6 +29,18 @@ def create_db():
     c.execute('INSERT INTO employees VALUES("itsjasonh", "{}")'.format(hash_pass("badword")))
     c.execute('INSERT INTO employees VALUES("theeguy9", "{}")'.format(hash_pass("badpassword")))
     c.execute('INSERT INTO employees VALUES("newguy29", "{}")'.format(hash_pass("pass123")))
+
+
+    # Creating a table to store failed login attempts
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS failed_logins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        attempts INTEGER NOT NULL,
+        last_attempt TEXT NOT NULL
+    )
+''')
+
     connection.commit()
     connection.close()
 
