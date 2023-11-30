@@ -5,16 +5,31 @@ from create_db import hash_pass
 from flask_limiter import Limiter, RateLimitExceeded
 from flask_limiter.util import get_remote_address
 
+import pyotp
 import time
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 app.database = "db.sqlite"
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "2 per hour"],
     storage_uri="memory://"
 )
+
+app = Flask(__name__)
+app.config['MAIL_SERVER'] = 'your_mail_server'
+app.config['MAIL_PORT'] = 587  # Use the appropriate port for your email server
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = 'your_username'
+app.config['MAIL_PASSWORD'] = 'your_password'
+app.config['MAIL_DEFAULT_SENDER'] = 'your_email@example.com'  # Set your default sender email
+app.config['MAIL_SUPPRESS_SEND'] = False  # Set to True during development to suppress sending emails
+
+mail = Mail(app)
+
+totp = pyotp.TOTP('base32secret3232')
 
 
 @app.errorhandler(RateLimitExceeded)
@@ -27,38 +42,27 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/login')
-def login():
-    return render_template('login.html')
-
-
-@app.route('/restock')
-def restock():
-    return render_template('restock.html')
-
-
-# API routes
-# API routes with rate limiting
-@app.route('/api/v1.0/storeLoginAPI/', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("10 per hour")  # Adjust the rate limit as needed
 @limiter.limit("50 per day")  # Adjust the rate limit as needed
 def loginAPI():
     if request.method == 'POST':
-        uname, pword = (request.json['username'], request.json['password'])
+        uname, email, pword, code = (
+            request.json['username'],
+            request.json['email'],
+            request.json['password'],
+            request.json['code']  # Get the TOTP code from the request
+        )
+
+        # Generate and send TOTP code via email
+        totp_code = totp.now()
+        send_totp_email(uname, email, totp_code)
+
+        # Check TOTP
+        if not totp.verify(code):  # Verify the user-entered TOTP code
+            return jsonify({'status': 'totp_fail'}), 401
+
         g.db = connect_db()
-
-        # Check if the user is in the failed login attempts table
-        cur_failed_logins = g.db.execute("SELECT * FROM failed_logins WHERE username = ?", (uname,))
-        failed_login_row = cur_failed_logins.fetchone()
-
-        if failed_login_row:
-            # If there are three or more consecutive failed attempts, check the timeout
-            if failed_login_row['attempts'] >= 3:
-                current_time = time.time()
-                if current_time - failed_login_row['last_attempt'] < 300:  # 300 seconds (5 minutes) timeout
-                    result = {'status': 'timeout'}
-                    g.db.close()
-                    return jsonify(result)
 
         # Check the username and password
         cur = g.db.execute(
@@ -73,17 +77,31 @@ def loginAPI():
             result = {'status': 'success'}
         else:
             # Update or insert failed login attempts
-            if failed_login_row:
-                g.db.execute("UPDATE failed_logins SET attempts = attempts + 1, last_attempt = ? WHERE username = ?",
-                             (current_time, uname))
-            else:
-                g.db.execute("INSERT INTO failed_logins (username, attempts, last_attempt) VALUES (?, 1, ?)",
-                             (uname, current_time))
+            g.db.execute("INSERT INTO failed_logins (username, attempts, last_attempt) VALUES (?, 1, ?)",
+                         (uname, time.time()))
             g.db.commit()
             result = {'status': 'fail'}
 
         g.db.close()
         return jsonify(result)
+
+
+def send_totp_email(username, email, totp_code):
+    subject = 'Your Two-Factor Authentication Code'
+    body = f'Hello {username},\n\nYour two-factor authentication code is: {totp_code}'
+
+    msg = Message(subject, recipients=[f'{email}'])
+    msg.body = body
+
+    try:
+        mail.send(msg)
+    except Exception as e:
+        print(f'Error sending email: {e}')
+
+
+@app.route('/restock')
+def restock():
+    return render_template('restock.html')
 
 
 @app.route('/api/v1.0/storeAPI', methods=['GET', 'POST'])
@@ -125,6 +143,7 @@ def page_not_found_error(error):
 def ratelimit_error():
     print("test")
     return render_template('error.html', error=ratelimit_error), 429
+
 
 @app.errorhandler(500)
 def internal_server_error(error):

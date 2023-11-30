@@ -3,8 +3,9 @@
 function login(){
     var uname = document.getElementById("uname").value;
     var passw = document.getElementById("passw").value;
+    var code = document.getElementById("code").value;  // Add this line to get the TOTP code
 
-    var dat = {'username':uname, 'password':passw};
+    var dat = {'username':uname, 'password':passw, 'code': code};  // Pass the TOTP code to the server
 
     $.ajax('/api/v1.0/storeLoginAPI/',{
         method: 'POST',
@@ -12,18 +13,18 @@ function login(){
         dataType: "json",
         contentType: "application/json",
     }).done(function(res){
-
-      if (res['status'] === 'success'){
-        $("#stat").html('<b>Successful Login<b>');
-      }
-      else{
-        $("#stat").html('<b>Login Failed</b>');
-      }
-
+        if (res['status'] === 'success'){
+            $("#stat").html('<b>Successful Login<b>');
+        } else if (res['status'] === 'totp_fail') {
+            $("#stat").html('<b>Incorrect TOTP Code</b>');
+        } else {
+            $("#stat").html('<b>Login Failed</b>');
+        }
     }).fail(function(err){
         $("#stat").html(err);
     });
 }
+
 
 function search() {
     var item = document.getElementById("searchItem").value;
