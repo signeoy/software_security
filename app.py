@@ -6,16 +6,32 @@ from flask_limiter import Limiter, RateLimitExceeded
 from flask_limiter.util import get_remote_address
 
 import time
+import pyotp
+from flask_mail import Mail, Message
+
+
 
 app = Flask(__name__)
 app.database = "db.sqlite"
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "2 per hour"],
+    default_limits=["200 per day"],
     storage_uri="memory://"
 )
 
+app.config['MAIL_SERVER'] = 'your_mail_server'
+app.config['MAIL_PORT'] = 587  # Use the appropriate port for your email server
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = 'your_username'
+app.config['MAIL_PASSWORD'] = 'your_password'
+app.config['MAIL_DEFAULT_SENDER'] = 'your_email@example.com'  # Set your default sender email
+app.config['MAIL_SUPPRESS_SEND'] = False  # Set to True during development to suppress sending emails
+
+mail = Mail(app)
+
+totp = pyotp.TOTP('base32secret3232')
 
 @app.errorhandler(RateLimitExceeded)
 def ratelimit_error(e):
@@ -40,39 +56,40 @@ def restock():
 # API routes
 # API routes with rate limiting
 @app.route('/api/v1.0/storeLoginAPI/', methods=['POST'])
-@limiter.limit("10 per hour")  # Adjust the rate limit as needed
-@limiter.limit("50 per day")  # Adjust the rate limit as needed
+@limiter.limit("10 per hour")
+@limiter.limit("50 per day")
 def loginAPI():
     if request.method == 'POST':
-        uname, pword = (request.json['username'], request.json['password'])
-        g.db = connect_db()
+        uname, email, pword, code = (
+            request.json['username'],
+            request.json['email'],
+            request.json['password'],
+            request.json['code']
+        )
 
-        # Check if the user is in the failed login attempts table
+        g.db = connect_db()
         cur_failed_logins = g.db.execute("SELECT * FROM failed_logins WHERE username = ?", (uname,))
         failed_login_row = cur_failed_logins.fetchone()
 
-        if failed_login_row:
-            # If there are three or more consecutive failed attempts, check the timeout
-            if failed_login_row['attempts'] >= 3:
-                current_time = time.time()
-                if current_time - failed_login_row['last_attempt'] < 300:  # 300 seconds (5 minutes) timeout
-                    result = {'status': 'timeout'}
-                    g.db.close()
-                    return jsonify(result)
+        if failed_login_row and failed_login_row['attempts'] >= 3:
+            current_time = time.time()
+            if current_time - failed_login_row['last_attempt'] < 300:
+                result = {'status': 'timeout'}
+                g.db.close()
+                return jsonify(result)
 
-        # Check the username and password
         cur = g.db.execute(
             "SELECT * FROM employees WHERE username = ? AND password = ?",
             (uname, hash_pass(pword))
         )
 
-        if cur.fetchone():
-            # Reset failed login attempts on successful login
+        user_row = cur.fetchone()
+
+        if user_row:
             g.db.execute("DELETE FROM failed_logins WHERE username = ?", (uname,))
             g.db.commit()
-            result = {'status': 'success'}
+            result = {'status': 'success', 'email': user_row[1]}  # Assuming email is at index 1 in the tuple
         else:
-            # Update or insert failed login attempts
             if failed_login_row:
                 g.db.execute("UPDATE failed_logins SET attempts = attempts + 1, last_attempt = ? WHERE username = ?",
                              (current_time, uname))
@@ -84,6 +101,7 @@ def loginAPI():
 
         g.db.close()
         return jsonify(result)
+
 
 
 @app.route('/api/v1.0/storeAPI', methods=['GET', 'POST'])

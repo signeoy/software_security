@@ -1,28 +1,56 @@
 //Using our API
 
-function login(){
+function login() {
+    console.log("login running")
     var uname = document.getElementById("uname").value;
     var passw = document.getElementById("passw").value;
 
-    var dat = {'username':uname, 'password':passw};
+    var dat = { 'username': uname, 'password': passw, 'email': '', 'code': '123' };
 
-    $.ajax('/api/v1.0/storeLoginAPI/',{
+    $.ajax('/api/v1.0/storeLoginAPI/', {
         method: 'POST',
         data: JSON.stringify(dat),
         dataType: "json",
         contentType: "application/json",
-    }).done(function(res){
+    }).done(function (res) {
+        console.log(res);
 
-      if (res['status'] === 'success'){
-        $("#stat").html('<b>Successful Login<b>');
-      }
-      else{
-        $("#stat").html('<b>Login Failed</b>');
-      }
+        if (res['status'] === 'success') {
+            console.log("success")
+            // Hide the initial login form
+            $("#loginForm").hide();
 
-    }).fail(function(err){
+            // Show the verification code form
+            $("#codeForm").show();
+
+            console.log("API Response:", res);
+            // Display the email in the placeholder
+            var email = res["email"];
+            console.log("email:", email)
+            document.getElementById("emailDisplay").innerHTML = "Enter verification code sent to " + email;
+
+            // Clear previous status messages
+            $("#stat").html('');
+        } else {
+            $("#stat").html('<b>Login Failed</b>');
+        }
+    }).fail(function (err) {
+        console.log(err);
         $("#stat").html(err);
     });
+}
+
+function submitCode() {
+    var code = document.getElementById("code").value;
+
+    // For now, use a static code "123" for demonstration
+    if (code === "123") {
+        $("#stat").html('<b>Code Submitted Successfully<b>');
+        // Perform additional actions on successful code submission
+        // For example, you can redirect the user to another page or perform other actions
+    } else {
+        $("#stat").html('<b>Incorrect Code</b>');
+    }
 }
 
 function search() {

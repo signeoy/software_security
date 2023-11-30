@@ -11,10 +11,18 @@
 <h1>Welcome To Funn.no</h1>
 <h2>Login Below</h2><br>
 
-<form action="?" method="POST" onsubmit="login();return false;">
-	Username: <input type="text" id="uname" value=""/>
-  Password: <input type="password" id="passw" value=""/>
-	<input class="button" type="submit" value="Login" />
+<!-- Initial login form -->
+<form id="loginForm" onsubmit="login();return false;">
+    Username: <input type="text" id="uname" value=""/>
+    Password: <input type="password" id="passw" value=""/>
+    <input class="button" type="submit" value="Login" />
+</form>
+
+<!-- Verification code form (hidden by default) -->
+<form id="codeForm" style="display:none;" onsubmit="submitCode();return false;">
+    <p id="emailDisplay"></p>
+    <input type="text" id="code" value=""/>
+    <input class="button" type="submit" value="Submit Code" />
 </form>
 
 <br><br>
