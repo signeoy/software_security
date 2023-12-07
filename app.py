@@ -20,18 +20,20 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-app.config['MAIL_SERVER'] = 'your_mail_server'
-app.config['MAIL_PORT'] = 587  # Use the appropriate port for your email server
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'your_username'
-app.config['MAIL_PASSWORD'] = 'your_password'
-app.config['MAIL_DEFAULT_SENDER'] = 'your_email@example.com'  # Set your default sender email
-app.config['MAIL_SUPPRESS_SEND'] = False  # Set to True during development to suppress sending emails
+# A mail can be set up like so to send emails with the verefication code:
+# app.config['MAIL_SERVER'] = 'your_mail_server'
+# app.config['MAIL_PORT'] = 587  # Use the appropriate port for your email server
+# app.config['MAIL_USE_TLS'] = True
+# app.config['MAIL_USE_SSL'] = False
+# app.config['MAIL_USERNAME'] = 'your_username'
+# app.config['MAIL_PASSWORD'] = 'your_password'
+# app.config['MAIL_DEFAULT_SENDER'] = 'your_email@example.com'  # Set your default sender email
+# app.config['MAIL_SUPPRESS_SEND'] = False  # Set to True during development to suppress sending emails
+# 
+# mail = Mail(app)
 
-mail = Mail(app)
-
-totp = pyotp.TOTP('base32secret3232')
+totp_secret = 'base32secret3232'
+totp = pyotp.TOTP(totp_secret)
 
 @app.errorhandler(RateLimitExceeded)
 def ratelimit_error(e):
@@ -60,19 +62,31 @@ def restock():
 @limiter.limit("50 per day")
 def loginAPI():
     if request.method == 'POST':
-        uname, email, pword, code = (
+        uname, email, pword = (
             request.json['username'],
             request.json['email'],
-            request.json['password'],
-            request.json['code']
+            request.json['password']
         )
+        print("Username:", uname)
+        print("Email:", email)
+        print("Password:", pword)
+        # Generate and send TOTP code via email
+        totp_code = totp.now()
+        # Here you could call a function to send an email with the code to the users email address
+        # send_totp_email(uname, email, totp_code)
+        print("code:", totp_code)
+
+        # Check TOTP
+        if not totp.verify(totp_code):  # Verify the user-entered TOTP code
+            return jsonify({'status': 'totp_fail'}), 401
 
         g.db = connect_db()
         cur_failed_logins = g.db.execute("SELECT * FROM failed_logins WHERE username = ?", (uname,))
         failed_login_row = cur_failed_logins.fetchone()
 
+        current_time = time.time()  # Define current_time here
+
         if failed_login_row and failed_login_row['attempts'] >= 3:
-            current_time = time.time()
             if current_time - failed_login_row['last_attempt'] < 300:
                 result = {'status': 'timeout'}
                 g.db.close()
@@ -102,7 +116,18 @@ def loginAPI():
         g.db.close()
         return jsonify(result)
 
-
+# The mail could be sent with a function like this:
+# def send_totp_email(username, email, totp_code):
+#     subject = 'Your Two-Factor Authentication Code'
+#     body = f'Hello {username},\n\nYour two-factor authentication code is: {totp_code}'
+# 
+#     msg = Message(subject, recipients=[email])
+#     msg.body = body
+# 
+#     try:
+#         mail.send(msg)
+#     except Exception as e:
+#         print(f'Error sending email: {e}')
 
 @app.route('/api/v1.0/storeAPI', methods=['GET', 'POST'])
 def storeapi():

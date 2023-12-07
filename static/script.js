@@ -1,11 +1,11 @@
 //Using our API
 
 function login() {
-    console.log("login running")
+    console.log("login running");
     var uname = document.getElementById("uname").value;
     var passw = document.getElementById("passw").value;
 
-    var dat = { 'username': uname, 'password': passw, 'email': '', 'code': '123' };
+    var dat = { 'username': uname, 'password': passw, 'email': '' };
 
     $.ajax('/api/v1.0/storeLoginAPI/', {
         method: 'POST',
@@ -16,7 +16,7 @@ function login() {
         console.log(res);
 
         if (res['status'] === 'success') {
-            console.log("success")
+            console.log("success");
             // Hide the initial login form
             $("#loginForm").hide();
 
@@ -26,7 +26,7 @@ function login() {
             console.log("API Response:", res);
             // Display the email in the placeholder
             var email = res["email"];
-            console.log("email:", email)
+            console.log("email:", email);
             document.getElementById("emailDisplay").innerHTML = "Enter verification code sent to " + email;
 
             // Clear previous status messages
@@ -36,9 +36,10 @@ function login() {
         }
     }).fail(function (err) {
         console.log(err);
-        $("#stat").html(err);
+        $("#stat").html(err.responseText);  // Display the error message
     });
 }
+
 
 function submitCode() {
     var code = document.getElementById("code").value;
